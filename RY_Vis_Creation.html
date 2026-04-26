@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReelYou — Visualization Flow</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #2A1F18; display: flex; align-items: center; justify-content: center; min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
+.phone-label { color: #8A7060; font-size: 13px; font-weight: 500; letter-spacing:.05em; margin-top:16px; text-align:center; }
+::-webkit-scrollbar { width: 0; }
+@keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+.dot1{animation:blink 1.4s infinite .0s} .dot2{animation:blink 1.4s infinite .2s} .dot3{animation:blink 1.4s infinite .4s}
+@keyframes msgIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.msg-enter { animation: msgIn .25s ease-out; }
+@keyframes slideUp   { from{transform:translateY(100%)} to{transform:translateY(0)} }
+@keyframes slideDown { from{transform:translateY(0)}    to{transform:translateY(100%)} }
+@keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+@keyframes fadeOut   { from{opacity:1} to{opacity:0} }
+.sheet-enter { animation: slideUp   .32s cubic-bezier(.32,1,.6,1) forwards; }
+.sheet-exit  { animation: slideDown .25s cubic-bezier(.4,0,1,1)  forwards; }
+.back-enter  { animation: fadeIn    .32s ease forwards; }
+.back-exit   { animation: fadeOut   .25s ease forwards; }
+@keyframes screenIn { from{opacity:0;transform:scale(1.02)} to{opacity:1;transform:scale(1)} }
+.screen-in { animation: screenIn .3s ease-out forwards; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.spin { animation: spin 1s linear infinite; }
+@keyframes confettiFall { from{opacity:0;transform:translateY(-18px) rotate(0deg)} to{opacity:1;transform:translateY(0) rotate(12deg)} }
+</style>
+</head>
+<body>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ── COLORS ─────────────────────────────────── */
+const BG        = '#F5EFE6';
+const WHITE     = '#FFFFFF';
+const PURPLE    = '#8B5CF6';
+const PURPLELT  = '#C4B5FD';
+const GREEN     = '#4CAF50';
+const GREENBTN  = '#7DC97A';
+const GREENPALE = '#E8F5E2';
+const BORDER    = '#E0D8CE';
+const TEXT      = '#1A1410';
+const TEXTMID   = '#8A7A6A';
+const USERBG    = '#EDE8E0';
+const STAMP     = '#9A9080';
+const PICO_IMG  = 'data:image/png;base64,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';
+
+/* ── DATA ────────────────────────────────────── */
+const CATS = [
+  {id:'love',emoji:'❤️',label:'Love Relationship'},
+  {id:'family',emoji:'👨‍👩‍👧',label:'Family & Friends'},
+  {id:'health',emoji:'💪',label:'Health & Fitness'},
+  {id:'career',emoji:'💼',label:'Career'},
+  {id:'financial',emoji:'💰',label:'Financial'},
+  {id:'purpose',emoji:'🌟',label:'Life Purpose'},
+  {id:'quality',emoji:'✨',label:'Quality of Life'},
+  {id:'contribution',emoji:'🌍',label:'Contribution'},
+];
+const Q5 = { text:"What's the energy of this moment?", options:[
+  '🌊 Still and quiet — time has stopped, nothing needs to happen',
+  '⚡ Electric — something is about to happen, or just did',
+  "🌀 In motion — we're moving, going somewhere, alive in it",
+  '🔥 Celebratory — big, loud, full of life and other people',
+]};
+const CDATA = {
+  love:{short:'love relationship',affirm:["Great choice. Let's go deep on your","love."],
+    q2:{text:"If this moment of love could be captured in a picture — who is in it with you?",options:["👤 Just me — fully ready, open, waiting for nothing","💑 Me and my partner — this is our moment","👥 Us, surrounded by the people we love","🌫️ A presence beside me — someone I haven't met yet","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["👀 We're looking at each other — nothing else needed","🌍 We're somewhere together — moving through the world","🥂 We're celebrating — others around us, joy everywhere","😌 A quiet, still moment — just existing together"]},
+    q4:{text:"Where does this moment take place?",options:["🏠 At home — warm light, intimate space","🌊 Somewhere in nature — open, vast, alive","🌍 A beautiful place in the world we're discovering together","🏙️ A city — energy, movement, life around us"]},
+  },
+  family:{short:'family & friends',affirm:["Beautiful. Let's build your vision around your","family."],
+    q2:{text:"If this moment could be captured in a picture — who is in it with you?",options:["👶 My children — this is about the family I'm raising","👨‍👩‍👧‍👦 My whole family — multiple generations, everyone together","👯 My closest friends — the ones who feel like chosen family","👴 My parents or elders — honoring where I come from","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["🏃 We're in the middle of something — playing, moving, fully alive","🤗 We're all together in one embrace — close, still, connected","🎉 We're celebrating — a birthday, a milestone, a special occasion","👀 They don't know I'm watching — taking in the moment from the side"]},
+    q4:{text:"Where does this moment take place?",options:["🏠 At home — our space, our mess, our life","🌊 At the beach — open, free, summer energy","🌲 In nature — a park, a forest, open fields","✈️ Somewhere we traveled to — a special place, away from the everyday"]},
+  },
+  health:{short:'health & fitness',affirm:["Let's build your strongest vision. Focused on your","body."],
+    q2:{text:"If this moment of physical achievement could be captured — who is in it with you?",options:["👤 Just me — this one is entirely mine","🏃 Me and a training partner or coach","🏅 Me and a crowd — I'm competing or performing","👨‍👩‍👧‍👦 My family watching — they're seeing a new version of me","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["🏆 I've just achieved something — a finish line, a personal best","💪 I'm in the middle of it — training, pushing, fully in my body","😌 I'm at rest — calm, strong, completely at ease in my body","👀 Someone is seeing me differently — I can feel it"]},
+    q4:{text:"Where does this moment take place?",options:["🌄 Outdoors — nature, open air, moving through the world","🏋️ A gym or training space — in my element","🏟️ A competition or event — rising to the moment","🪞 Everyday life — feeling extraordinary in an ordinary moment"]},
+  },
+  career:{short:'career',affirm:["Powerful. Let's visualize your","career at its peak."],
+    q2:{text:"If this moment of career success could be captured — who is in it with you?",options:["👤 Just me — this is my moment, mine alone","👥 My team — the people I built this with","🌍 An audience — people I'm speaking to, leading, or impacting","🤝 One key person — a partner, mentor, or client who made it real","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["🎤 I'm on stage — speaking, presenting, commanding the room","🎓 I'm teaching — guiding people through something that's changing them","🏆 I'm being recognized — they're acknowledging what I've built","💡 I've just said something — and you can see it land on their faces"]},
+    q4:{text:"Where does this moment take place?",options:["🏛️ A grand stage — a large conference hall, spotlight on me","🍽️ An intimate gathering — a dinner, a private ceremony","📱 The world is watching — it's public, digital, beyond the room","🏢 Inside my own company — my people, my culture, my house"]},
+  },
+  financial:{short:'financial freedom',affirm:["Let's create the vision of your","financial freedom."],
+    q2:{text:"If this moment of financial freedom could be captured — who is in it with you?",options:["👤 Just me — this is my moment, mine alone","👫 Me and my partner — we built this together","👨‍👩‍👧‍👦 My whole family — everyone who this is for","🤝 My inner circle — the people who believed in me","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["🏠 We're seeing something we just acquired — a home, a property","✈️ We're going somewhere — travel, freedom, the world is open","🥂 We're celebrating — marking the moment it became real","😌 We're simply living it — the quiet knowing that we made it"]},
+    q4:{text:"Where in this moment are you?",options:["🚪 Standing at the front entrance — seeing it for the first time","🌿 In the backyard — standing in the space that's now yours","🪟 Inside, looking out — taking in what you've built","🚗 Just arrived — still outside, the house ahead of you"]},
+  },
+  purpose:{short:'life purpose',affirm:["Let's paint the picture of you living your","purpose."],
+    q2:{text:"If this moment of living your purpose could be captured — who is in it with you?",options:["👤 Just me — this is between me and my work","🌍 The people I serve — they're why I do this","👥 My community — those who share this vision with me","🤝 One person — someone whose life I've completely changed","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["🎤 I'm sharing it — speaking, teaching, performing, expressing","✍️ I'm creating it — deep in the work, completely absorbed","👀 I'm witnessing its impact — seeing what it does to someone else","🏁 I'm at a milestone — something I built now exists in the world"]},
+    q4:{text:"Where does this moment take place?",options:["🎭 In front of others — a stage, a room, a platform","🏡 In my own space — a studio, an office, somewhere quiet","🌍 Out in the world — where the people I serve actually are","🌿 In nature or a place that holds deep personal meaning"]},
+  },
+  quality:{short:'quality of life',affirm:["Let's build the vision of your ideal","everyday life."],
+    q2:{text:"If this moment of your ideal everyday life could be captured — who is in it with you?",options:["👤 Just me — this is my time, completely mine","👫 Me and my partner — sharing the good life together","👨‍👩‍👧‍👦 My family — all of us, living well together","👯 My closest friends — enjoying life side by side","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["☕ A slow, perfect morning — unhurried, completely mine","🌍 I'm somewhere I love — fully present, nowhere to be","🎨 I'm doing something I love — a passion, a pleasure, a hobby","😌 Nothing in particular — and that's exactly the point"]},
+    q4:{text:"Where does this moment take place?",options:["🏠 My dream home — a space that is completely, beautifully mine","🌿 In nature — somewhere open, peaceful, alive","☕ A perfect spot in a city — a café, a terrace, a beautiful street","✈️ Somewhere in the world — a dream destination, a new chapter"]},
+  },
+  contribution:{short:'contribution',affirm:["Meaningful. Let's visualize your moment of","contribution."],
+    q2:{text:"If this moment of contribution could be captured — who is in it with you?",options:["👤 Just me — and the work itself","🤝 One person — someone whose life I've directly changed","🌍 A community or group — many lives, one moment","👥 My team — the people building this with me","👁️ I'm the viewer — the scene unfolds in front of me"]},
+    q3:{text:"What is actually happening in this moment?",options:["🎤 I'm delivering something — speaking, teaching, leading","👀 I'm witnessing the impact — seeing what this does to someone","🏁 Something I built is being launched or recognized","✍️ I'm deep in the work — creating something that will outlast me"]},
+    q4:{text:"Where does this moment take place?",options:["🌍 On a global stage — a large platform, a wide audience","🤝 One on one — an intimate, profound moment of impact","🏘️ In a community — surrounded by the people I serve","📖 Through a work that exists in the world — a book, a film, a project"]},
+  },
+};
+const IMAGE_PALETTES = [
+  {bg:'#C8DFF0',grad:'linear-gradient(160deg,#B8CFE8,#8AAEC8)'},
+  {bg:'#F0D9C0',grad:'linear-gradient(160deg,#E8CBA8,#C8A878)'},
+  {bg:'#D5C8F0',grad:'linear-gradient(160deg,#C0B0E8,#9880C8)'},
+  {bg:'#C8F0D5',grad:'linear-gradient(160deg,#A8E0B8,#78C090)'},
+];
+
+let clockMin = 1;
+function nextTime(){ const m=1+clockMin++; return `12:${String(m).padStart(2,'0')}`; }
+
+/* ── HELPERS ─────────────────────────────────── */
+function B({children}){ return <strong style={{fontWeight:700}}>{children}</strong>; }
+
+function StatusBar({light}){
+  const c = light ? 'rgba(255,255,255,0.92)' : TEXT;
+  return (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 22px 4px'}}>
+      <span style={{fontSize:15,fontWeight:700,color:c}}>9:57</span>
+      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+        <svg width="17" height="12" viewBox="0 0 17 12"><rect x="0" y="3" width="3" height="9" rx="1" fill={c}/><rect x="4.5" y="2" width="3" height="10" rx="1" fill={c}/><rect x="9" y="0" width="3" height="12" rx="1" fill={c}/><rect x="13.5" y="0" width="3" height="12" rx="1" fill={c} opacity="0.3"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.4C10.5 2.4 12.7 3.5 14.2 5.2L15.5 3.9C13.6 1.8 10.9 0.5 8 0.5C5.1 0.5 2.4 1.8 0.5 3.9L1.8 5.2C3.3 3.5 5.5 2.4 8 2.4Z" fill={c}/><path d="M8 5.4C9.8 5.4 11.4 6.2 12.5 7.5L13.8 6.2C12.3 4.6 10.3 3.6 8 3.6C5.7 3.6 3.7 4.6 2.2 6.2L3.5 7.5C4.6 6.2 6.2 5.4 8 5.4Z" fill={c}/><circle cx="8" cy="10" r="1.5" fill={c}/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="3" stroke={c} strokeWidth="1.2" fill="none"/><rect x="22" y="3.5" width="2" height="5" rx="1" fill={c} opacity="0.5"/><rect x="1.5" y="2.5" width="15" height="7" rx="2" fill={c}/></svg>
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({step,light,onClose}){
+  const pct = Math.round(step/7*100)+'%';
+  return (
+    <div style={{padding:'6px 16px 10px',display:'flex',alignItems:'center',gap:10}}>
+      <div onClick={onClose} style={{fontSize:20,color:light?'rgba(255,255,255,0.9)':TEXT,lineHeight:1,cursor:'pointer'}}>{light?'✕':'←'}</div>
+      <div style={{flex:1,height:10,background:light?'rgba(255,255,255,0.25)':'#E0D5C8',borderRadius:10,overflow:'hidden'}}>
+        <div style={{width:pct,height:'100%',background:`linear-gradient(90deg,${PURPLE},${PURPLELT})`,borderRadius:10,transition:'width 0.5s ease'}}/>
+      </div>
+      <div style={{fontSize:22,lineHeight:1}}>🌸</div>
+    </div>
+  );
+}
+
+function PicoAvatar(){
+  return (
+    <div style={{width:36,height:36,borderRadius:18,overflow:'hidden',background:GREENPALE,flexShrink:0,border:'2px solid #D4EED0'}}>
+      <img src={PICO_IMG} style={{width:'30px',height:'30px',objectFit:'cover'}} alt=""/>
+    </div>
+  );
+}
+function PicoHeader(){
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+      <PicoAvatar/><span style={{fontSize:13,fontWeight:700,color:TEXT}}>Pico</span>
+    </div>
+  );
+}
+function PicoMsg({children,time}){
+  return (
+    <div className="msg-enter" style={{padding:'4px 14px 10px'}}>
+      <PicoHeader/>
+      <div style={{marginLeft:44,background:WHITE,borderRadius:'0 18px 18px 18px',padding:'12px 14px',border:`1px solid ${BORDER}`,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:14,lineHeight:'1.55',color:TEXT}}>{children}</div>
+        <div style={{textAlign:'right',marginTop:6,fontSize:11,color:STAMP}}>{time} <span style={{opacity:.4}}>✓</span></div>
+      </div>
+    </div>
+  );
+}
+function UserMsg({children,time}){
+  return (
+    <div className="msg-enter" style={{padding:'4px 14px 10px',display:'flex',justifyContent:'flex-end'}}>
+      <div style={{maxWidth:'76%',background:USERBG,borderRadius:'18px 0 18px 18px',padding:'12px 14px',border:`1px solid ${BORDER}`,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:14,lineHeight:'1.55',color:TEXT}}>{children}</div>
+        <div style={{textAlign:'right',marginTop:4,fontSize:11,color:STAMP}}>{time} <span style={{opacity:.4}}>✓</span></div>
+      </div>
+    </div>
+  );
+}
+function TypingIndicator(){
+  return (
+    <div style={{padding:'4px 14px 10px'}}>
+      <PicoHeader/>
+      <div style={{marginLeft:44,background:WHITE,borderRadius:'0 18px 18px 18px',padding:'12px 16px',border:`1px solid ${BORDER}`,boxShadow:'0 2px 8px rgba(0,0,0,0.06)',display:'inline-flex',gap:5,alignItems:'center'}}>
+        <div className="dot1" style={{width:8,height:8,borderRadius:4,background:TEXTMID}}/>
+        <div className="dot2" style={{width:8,height:8,borderRadius:4,background:TEXTMID}}/>
+        <div className="dot3" style={{width:8,height:8,borderRadius:4,background:TEXTMID}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ── LEVEL INTRO SCREEN ───────────────────────── */
+function LevelIllustration(){
+  return (
+    <svg width="100%" height="160" viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg">
+      <rect width="320" height="160" fill="#FFF8EE" rx="14"/>
+      <rect x="0" y="118" width="320" height="42" fill="#F0E4D0" rx="0"/>
+      <rect x="220" y="18" width="60" height="44" rx="6" fill="#D4EAFF" stroke="#B8D8F8" strokeWidth="1.5"/>
+      <ellipse cx="250" cy="34" rx="14" ry="10" fill="#87CEEB" opacity=".7"/>
+      <path d="M236 50 L244 38 L252 44 L260 32 L264 50Z" fill="#78C090" opacity=".8"/>
+      <rect x="20" y="90" width="200" height="30" rx="12" fill="#C8A87A"/>
+      <rect x="16" y="82" width="28" height="40" rx="10" fill="#D4B48C"/>
+      <rect x="196" y="82" width="28" height="40" rx="10" fill="#D4B48C"/>
+      <rect x="22" y="86" width="196" height="20" rx="8" fill="#E8C89A"/>
+      <ellipse cx="120" cy="88" rx="18" ry="18" fill="#FDDBB4"/>
+      <ellipse cx="120" cy="76" rx="18" ry="10" fill="#5C3D1E"/>
+      <rect x="60" y="88" width="120" height="16" rx="8" fill="#A8D8EA"/>
+      <path d="M114 88 Q117 92 120 88" stroke="#5C3D1E" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <line x1="112" y1="86" x2="116" y2="86" stroke="#5C3D1E" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="122" y1="86" x2="126" y2="86" stroke="#5C3D1E" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="148" cy="58" r="3" fill="#C4E0F8" opacity=".8"/>
+      <circle cx="156" cy="50" r="5" fill="#C4E0F8" opacity=".8"/>
+      <circle cx="168" cy="40" r="18" fill="#C4E0F8" opacity=".85" stroke="#A8D0F0" strokeWidth="1"/>
+      <path d="M156 38 L162 32 L168 38 L174 32 L180 38" stroke="#6AAAD8" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M158 44 L170 44" stroke="#6AAAD8" strokeWidth="1.5" strokeLinecap="round"/>
+      <rect x="282" y="96" width="10" height="26" rx="3" fill="#A0785A"/>
+      <ellipse cx="287" cy="90" rx="16" ry="20" fill="#78C090"/>
+      <ellipse cx="278" cy="96" rx="10" ry="13" fill="#5CB85C"/>
+      <ellipse cx="296" cy="96" rx="10" ry="13" fill="#8DD68C"/>
+      <line x1="287" y1="18" x2="287" y2="70" stroke="#FFE066" strokeWidth="1" opacity=".4"/>
+      <line x1="280" y1="20" x2="275" y2="70" stroke="#FFE066" strokeWidth="1" opacity=".3"/>
+      <line x1="294" y1="20" x2="299" y2="70" stroke="#FFE066" strokeWidth="1" opacity=".3"/>
+    </svg>
+  );
+}
+
+function BottomNav(){
+  const icons = [
+    {label:'Home', path:'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'},
+    {label:'Browse', path:'M4 6h16M4 12h16M4 18h16'},
+    {label:'Progress', path:'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z'},
+    {label:'Profile', path:'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z'},
+  ];
+  return (
+    <div style={{background:WHITE,borderTop:`1px solid ${BORDER}`,display:'flex',padding:'8px 0 4px'}}>
+      {icons.map((ic,i)=>(
+        <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer'}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={i===0?PURPLE:TEXTMID} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            {ic.label==='Browse'
+              ? <><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></>
+              : <path d={ic.path} fill={i===0?PURPLE:'none'}/>
+            }
+          </svg>
+          <span style={{fontSize:10,color:i===0?PURPLE:TEXTMID,fontWeight:i===0?700:400}}>{ic.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LevelIntroScreen({onStart,onSkip,level=476}){
+  return (
+    <div className="screen-in" style={{position:'absolute',inset:0,zIndex:30,background:`linear-gradient(180deg,#6BBEE8 0%,#A8DCFA 55%,#C8ECFF 100%)`,display:'flex',flexDirection:'column'}}>
+      <StatusBar light/>
+      <div style={{padding:'4px 14px 10px',display:'flex',alignItems:'center',gap:8}}>
+        <div style={{background:'rgba(255,255,255,0.92)',borderRadius:22,padding:'5px 5px 5px 14px',display:'flex',alignItems:'center',gap:6,flex:1,boxShadow:'0 2px 8px rgba(0,0,0,0.08)'}}>
+          <span style={{fontSize:13,color:TEXTMID,fontWeight:500}}>Browse</span>
+          <div onClick={onStart} style={{background:'white',borderRadius:18,padding:'5px 14px',boxShadow:'0 1px 4px rgba(0,0,0,0.1)',cursor:'pointer'}}>
+            <span style={{fontSize:13,fontWeight:700,color:TEXT}}>Your Own Visualization</span>
+          </div>
+        </div>
+        <div style={{background:'#F5C842',borderRadius:18,padding:'5px 12px',display:'flex',alignItems:'center',gap:4,boxShadow:'0 2px 6px rgba(0,0,0,0.12)'}}>
+          <span style={{fontSize:13,fontWeight:800,color:'#7A4800'}}>⚡ 24</span>
+        </div>
+      </div>
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 18px 10px'}}>
+        <div style={{background:WHITE,borderRadius:26,padding:'20px 20px 22px',width:'100%',boxShadow:'0 10px 40px rgba(0,0,0,0.14)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,justifyContent:'center',marginBottom:6}}>
+            <img src={PICO_IMG} style={{width:22,height:22,objectFit:'cover',borderRadius:11}} alt=""/>
+            <span style={{fontSize:12,color:TEXTMID,fontWeight:600,letterSpacing:'0.04em'}}>Visualization</span>
+          </div>
+          <div style={{textAlign:'center',fontSize:28,fontWeight:900,color:TEXT,marginBottom:6,letterSpacing:'-0.5px'}}>
+            Level {level}
+          </div>
+          <div style={{textAlign:'center',fontSize:13,color:TEXTMID,lineHeight:1.55,marginBottom:16}}>
+            Picture your desired life and believe your<br/>dreams are real.
+          </div>
+          <div style={{borderRadius:16,overflow:'hidden',marginBottom:20,border:`1px solid ${BORDER}`}}>
+            <LevelIllustration/>
+          </div>
+          <button onClick={onStart} style={{width:'100%',background:GREENBTN,color:WHITE,border:'none',borderRadius:30,padding:'15px',fontSize:16,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 16px rgba(100,180,100,0.35)',marginBottom:12}}>
+            Start Level
+          </button>
+          <div style={{textAlign:'center'}}>
+            <button onClick={onSkip} style={{background:'none',border:'none',color:TEXTMID,fontSize:14,cursor:'pointer',fontWeight:500}}>
+              Skip
+            </button>
+          </div>
+        </div>
+      </div>
+      <BottomNav/>
+      <div style={{display:'flex',justifyContent:'center',padding:'8px 0 10px',background:WHITE}}>
+        <div style={{width:130,height:5,borderRadius:3,background:'#CCC'}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ── BOTTOM SHEET ────────────────────────────── */
+function BottomSheet({options,question,onSelect,exiting}){
+  const [pressedIdx,setPressedIdx] = useState(null);
+  return (
+    <>
+      <div className={exiting?'back-exit':'back-enter'} style={{position:'absolute',inset:0,background:'rgba(20,12,6,0.25)',zIndex:9}}/>
+      <div className={exiting?'sheet-exit':'sheet-enter'} style={{position:'absolute',bottom:0,left:0,right:0,zIndex:10,background:WHITE,borderRadius:'24px 24px 0 0',paddingBottom:32,boxShadow:'0 -8px 40px rgba(0,0,0,0.14)'}}>
+        <div style={{display:'flex',justifyContent:'center',padding:'12px 0 10px'}}>
+          <div style={{width:38,height:4,borderRadius:2,background:'#DDD'}}/>
+        </div>
+        {question&&(
+          <div style={{padding:'2px 20px 14px',display:'flex',alignItems:'flex-start',gap:10}}>
+            <div style={{width:32,height:32,borderRadius:16,overflow:'hidden',background:GREENPALE,flexShrink:0,border:'2px solid #D4EED0'}}>
+              <img src={PICO_IMG} style={{width:'27px',height:'27px',objectFit:'cover'}} alt=""/>
+            </div>
+            <div style={{background:'#F0EBE3',borderRadius:'0 16px 16px 16px',padding:'10px 14px',flex:1}}>
+              <div style={{fontSize:14,fontWeight:700,color:TEXT,lineHeight:1.45}}>{question}</div>
+            </div>
+          </div>
+        )}
+        <div style={{padding:'4px 16px 0',display:'flex',flexDirection:'column',gap:9}}>
+          {options.map((opt,i)=>{
+            const isP=pressedIdx===i;
+            return (
+              <button key={i} onPointerDown={()=>setPressedIdx(i)}
+                onPointerUp={()=>{setPressedIdx(null);onSelect(i,opt);}}
+                onPointerLeave={()=>setPressedIdx(null)}
+                style={{background:isP?GREENPALE:WHITE,border:`1.5px solid ${isP?GREEN:BORDER}`,borderRadius:30,padding:'12px 16px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',textAlign:'left',width:'100%',transition:'background 0.1s,border-color 0.1s'}}>
+                <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{opt.split(' ')[0]}</span>
+                <span style={{fontSize:13,color:TEXT,flex:1,lineHeight:1.4}}>{opt.split(' ').slice(1).join(' ')}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── GENERATED IMAGES ────────────────────────── */
+function GeneratedImages({selImages,onToggle}){
+  return (
+    <div style={{padding:'4px 14px 10px'}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        {IMAGE_PALETTES.map((p,i)=>{
+          const isSel=selImages.includes(i);
+          return (
+            <button key={i} onClick={()=>onToggle(i)} style={{
+              background:p.grad,border:`2.5px solid ${isSel?GREEN:'transparent'}`,
+              borderRadius:16,height:116,padding:0,cursor:'pointer',
+              position:'relative',overflow:'hidden',transition:'border-color 0.2s',
+            }}>
+              <div style={{position:'absolute',inset:0,opacity:.1,backgroundImage:'repeating-linear-gradient(135deg,#0003 0,#0003 1px,transparent 1px,transparent 8px)'}}/>
+              {isSel&&(
+                <div style={{position:'absolute',top:8,right:8,background:GREEN,borderRadius:12,width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,color:WHITE,fontWeight:700,boxShadow:'0 2px 6px rgba(0,0,0,0.2)'}}>✓</div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── PHOTO UPLOAD ─────────────────────────────── */
+function PhotoUpload({onUpload}){
+  return (
+    <div style={{padding:'4px 14px 10px'}}>
+      <div style={{border:`2px dashed ${BORDER}`,borderRadius:20,padding:'22px 16px',display:'flex',flexDirection:'column',alignItems:'center',gap:12,background:'rgba(0,0,0,0.015)'}}>
+        <div style={{fontSize:40}}>📸</div>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:15,fontWeight:700,color:TEXT,marginBottom:4}}>Add your photo</div>
+          <div style={{fontSize:12,color:TEXTMID,lineHeight:1.5}}>Take a selfie or upload a photo —<br/>I'll place you inside your vision</div>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onUpload} style={{background:PURPLE,color:WHITE,border:'none',borderRadius:22,padding:'10px 18px',fontSize:13,fontWeight:700,cursor:'pointer'}}>📷 Take selfie</button>
+          <button onClick={onUpload} style={{background:WHITE,border:`1.5px solid ${BORDER}`,borderRadius:22,padding:'10px 18px',fontSize:13,fontWeight:600,cursor:'pointer',color:TEXT}}>Upload photo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function GeneratingLoader(){
+  return (
+    <div style={{padding:'12px 14px 16px',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+      <svg className="spin" width="36" height="36" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15" fill="none" stroke={BORDER} strokeWidth="3"/>
+        <circle cx="18" cy="18" r="15" fill="none" stroke={PURPLE} strokeWidth="3" strokeDasharray="30 66" strokeLinecap="round"/>
+      </svg>
+      <div style={{fontSize:13,color:TEXTMID,fontWeight:500}}>Creating your 4 visions...</div>
+    </div>
+  );
+}
+
+/* ── BOTTOM BARS ─────────────────────────────── */
+function StaticBar(){
+  return (
+    <div style={{borderTop:`1px solid ${BORDER}`,padding:'10px 14px',background:BG,display:'flex',alignItems:'center',gap:10}}>
+      <div style={{flex:1,background:'rgba(0,0,0,0.04)',border:`1px solid ${BORDER}`,borderRadius:20,padding:'9px 14px',fontSize:13,color:'#C0B0A0',pointerEvents:'none'}}>Ask anything</div>
+      <div style={{width:32,height:32,borderRadius:16,background:'rgba(0,0,0,0.04)',border:`1.5px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',opacity:0.4}}>
+        <svg width="14" height="18" viewBox="0 0 14 18"><rect x="4" y="0" width="6" height="11" rx="3" fill={TEXTMID}/><path d="M1 8C1 11.9 3.7 15 7 15C10.3 15 13 11.9 13 8" stroke={TEXTMID} strokeWidth="1.5" fill="none" strokeLinecap="round"/><line x1="7" y1="15" x2="7" y2="18" stroke={TEXTMID} strokeWidth="1.5" strokeLinecap="round"/></svg>
+      </div>
+    </div>
+  );
+}
+function ActiveBar({text,setText,onSend}){
+  const canSend=text.trim().length>0;
+  return (
+    <div style={{borderTop:`1px solid ${BORDER}`,padding:'10px 14px',background:BG,display:'flex',alignItems:'center',gap:10}}>
+      <div style={{flex:1,background:WHITE,border:`1.5px solid ${PURPLE}`,borderRadius:20,display:'flex',alignItems:'center',padding:'2px 6px 2px 14px',gap:8,boxShadow:`0 0 0 3px ${PURPLELT}40`}}>
+        <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&canSend&&onSend()}
+          placeholder="Describe your vision..."
+          style={{flex:1,border:'none',outline:'none',fontSize:13,color:TEXT,background:'transparent',padding:'7px 0'}} autoFocus/>
+        {canSend&&(
+          <button onClick={onSend} style={{width:30,height:30,borderRadius:15,background:PURPLE,border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M6 13V1M6 1L1 6M6 1L11 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        )}
+      </div>
+      {!canSend&&(
+        <div style={{width:32,height:32,borderRadius:16,background:WHITE,border:`1.5px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="14" height="18" viewBox="0 0 14 18"><rect x="4" y="0" width="6" height="11" rx="3" fill={TEXTMID}/><path d="M1 8C1 11.9 3.7 15 7 15C10.3 15 13 11.9 13 8" stroke={TEXTMID} strokeWidth="1.5" fill="none" strokeLinecap="round"/><line x1="7" y1="15" x2="7" y2="18" stroke={TEXTMID} strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </div>
+      )}
+    </div>
+  );
+}
+function ContinueBtn({onPress,disabled}){
+  return (
+    <div style={{padding:'10px 16px 14px',background:BG,borderTop:`1px solid ${BORDER}`}}>
+      <button onClick={onPress} disabled={disabled} style={{width:'100%',background:disabled?'#C8E8C0':GREENBTN,color:WHITE,border:'none',borderRadius:30,padding:'14px',fontSize:16,fontWeight:700,cursor:disabled?'default':'pointer',transition:'background 0.2s',boxShadow:disabled?'none':'0 4px 16px rgba(100,180,100,0.35)'}}>Continue</button>
+    </div>
+  );
+}
+
+/* ── REEL VIEW ────────────────────────────────── */
+function ReelView({selImages,userText,onDone}){
+  const [idx,setIdx] = useState(0);
+  const twoImages = selImages.length >= 2
+    ? selImages.slice(0,2)
+    : [selImages[0]??0, ((selImages[0]??0)+1)%4];
+  const palettes = twoImages.map(i=>IMAGE_PALETTES[i]);
+  const total = 2;
+  const cur = palettes[idx]||IMAGE_PALETTES[0];
+  const goNext = ()=>{ if(idx<total-1) setIdx(idx+1); else onDone(); };
+  return (
+    <div className="screen-in" onClick={goNext} style={{position:'absolute',inset:0,zIndex:20,background:'#111',display:'flex',flexDirection:'column',cursor:'pointer'}}>
+      <div style={{position:'absolute',inset:0,background:cur.grad,transition:'background 0.4s ease'}}>
+        <div style={{position:'absolute',inset:0,opacity:.08,backgroundImage:'repeating-linear-gradient(135deg,#0003 0,#0003 1px,transparent 1px,transparent 6px)'}}/>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0) 40%,rgba(0,0,0,0.6) 70%,rgba(0,0,0,0.85) 100%)'}}/>
+      </div>
+      <div onClick={e=>e.stopPropagation()} style={{position:'relative',zIndex:2}}>
+        <StatusBar light/><ProgressBar step={7} light onClose={onDone}/>
+      </div>
+      {total>1&&(
+        <div style={{position:'absolute',top:80,left:0,right:0,display:'flex',justifyContent:'center',gap:6,zIndex:2}}>
+          {palettes.map((_,i)=>(
+            <div key={i} onClick={e=>{e.stopPropagation();setIdx(i);}} style={{width:i===idx?24:6,height:6,borderRadius:3,background:i===idx?WHITE:'rgba(255,255,255,0.4)',transition:'all 0.3s',cursor:'pointer'}}/>
+          ))}
+        </div>
+      )}
+      <div style={{position:'absolute',bottom:90,left:0,right:0,padding:'0 28px',zIndex:2}}>
+        <p style={{fontSize:15,lineHeight:'1.65',color:WHITE,fontWeight:400,textShadow:'0 1px 4px rgba(0,0,0,0.5)'}}>
+          {userText||"I caught a glimpse of myself in the office, staring out the window at the world, feeling fulfilled, with a calm smile on my face."}
+        </p>
+        <div style={{marginTop:12,display:'flex',alignItems:'center',gap:6,opacity:0.5}}>
+          <span style={{fontSize:12,color:WHITE,fontWeight:500}}>Tap to continue</span>
+          <span style={{fontSize:14,color:WHITE}}>→</span>
+        </div>
+      </div>
+      <div onClick={e=>e.stopPropagation()} style={{position:'absolute',bottom:24,left:0,right:0,display:'flex',justifyContent:'center',gap:20,zIndex:2}}>
+        <button style={{width:48,height:48,borderRadius:24,background:'rgba(255,255,255,0.2)',border:'1.5px solid rgba(255,255,255,0.4)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',backdropFilter:'blur(8px)'}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <button onClick={goNext} style={{width:48,height:48,borderRadius:24,background:'rgba(255,255,255,0.2)',border:'1.5px solid rgba(255,255,255,0.4)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',backdropFilter:'blur(8px)'}}>
+          <svg width="22" height="20" viewBox="0 0 24 22" fill="none"><path d="M12 21C12 21 2 14 2 7.5C2 4.42 4.42 2 7.5 2C9.24 2 10.91 2.81 12 4.08C13.09 2.81 14.76 2 16.5 2C19.58 2 22 4.42 22 7.5C22 14 12 21 12 21Z" fill="rgba(255,100,100,0.9)" stroke="white" strokeWidth="1.5"/></svg>
+        </button>
+      </div>
+      <div style={{position:'absolute',bottom:6,left:0,right:0,display:'flex',justifyContent:'center',zIndex:2}}>
+        <div style={{width:130,height:5,borderRadius:3,background:'rgba(255,255,255,0.3)'}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ── CELEBRATION ──────────────────────────────── */
+function Fireworks(){
+  const star = (cx,cy,R,r) => {
+    const p=[];
+    for(let i=0;i<8;i++){
+      const a1=(i*45-90)*Math.PI/180, a2=((i*45+22.5)-90)*Math.PI/180;
+      p.push((cx+R*Math.cos(a1)).toFixed(1)+','+(cy+R*Math.sin(a1)).toFixed(1));
+      p.push((cx+r*Math.cos(a2)).toFixed(1)+','+(cy+r*Math.sin(a2)).toFixed(1));
+    }
+    return p.join(' ');
+  };
+  const burst = (cx,cy,R,r,n) => {
+    const p=[];
+    for(let i=0;i<n;i++){
+      const a1=(i*360/n-90)*Math.PI/180, a2=((i*360/n+180/n)-90)*Math.PI/180;
+      p.push((cx+R*Math.cos(a1)).toFixed(1)+','+(cy+R*Math.sin(a1)).toFixed(1));
+      p.push((cx+r*Math.cos(a2)).toFixed(1)+','+(cy+r*Math.sin(a2)).toFixed(1));
+    }
+    return p.join(' ');
+  };
+  return (
+    <svg width="300" height="210" viewBox="0 0 300 210" style={{overflow:'visible'}}>
+      {/* Stems */}
+      <line x1="138" y1="208" x2="68" y2="58" stroke="#C0B0A0" strokeWidth="3.5" strokeLinecap="round"/>
+      <line x1="150" y1="208" x2="150" y2="18" stroke="#C0B0A0" strokeWidth="3.5" strokeLinecap="round"/>
+      <line x1="162" y1="208" x2="232" y2="75" stroke="#C0B0A0" strokeWidth="3.5" strokeLinecap="round"/>
+
+      {/* Left green cluster */}
+      <circle cx="68" cy="48" r="19" fill="#6DC86D"/>
+      <circle cx="52" cy="62" r="14" fill="#54B054"/>
+      <circle cx="84" cy="62" r="14" fill="#54B054"/>
+      <circle cx="68" cy="32" r="13" fill="#84D884"/>
+
+      {/* Center green cluster */}
+      <circle cx="150" cy="10" r="23" fill="#6DC86D"/>
+      <circle cx="131" cy="26" r="17" fill="#54B054"/>
+      <circle cx="169" cy="26" r="17" fill="#54B054"/>
+      <circle cx="150" cy="-5" r="15" fill="#84D884"/>
+
+      {/* Right green cluster */}
+      <circle cx="232" cy="67" r="19" fill="#6DC86D"/>
+      <circle cx="216" cy="81" r="14" fill="#54B054"/>
+      <circle cx="248" cy="81" r="14" fill="#54B054"/>
+      <circle cx="232" cy="51" r="13" fill="#84D884"/>
+
+      {/* Yellow spiral streamers */}
+      <path d="M84 152 C70 138 54 150 61 168 C68 186 88 181 95 162 C102 143 83 130 68 143"
+            stroke="#F5C030" strokeWidth="5" fill="none" strokeLinecap="round"/>
+      <path d="M218 128 C232 114 248 126 241 144 C234 162 214 157 207 138 C200 119 218 106 232 119"
+            stroke="#F5C030" strokeWidth="5" fill="none" strokeLinecap="round"/>
+
+      {/* Orange 8-pointed stars */}
+      <polygon points={star(30,72,19,7)} fill="#F07848"/>
+      <polygon points={star(258,38,21,8)} fill="#F07848"/>
+      <polygon points={star(200,150,16,6)} fill="#F07848"/>
+
+      {/* Small cross sparkles */}
+      <polygon points={star(278,112,11,4)} fill="#F5A030"/>
+      <polygon points={star(18,130,9,3.5)} fill="#F5A030"/>
+
+      {/* Purple spiky burst */}
+      <polygon points={burst(105,178,27,11,12)} fill="#B48ED8"/>
+    </svg>
+  );
+}
+function CelebrationScreen({onContinue}){
+  return (
+    <div className="screen-in" style={{position:'absolute',inset:0,zIndex:20,background:BG,display:'flex',flexDirection:'column'}}>
+      <StatusBar/>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 24px',gap:12}}>
+        <Fireworks/>
+        <img src={PICO_IMG} style={{width:100,height:100,objectFit:'contain',marginTop:-8}} alt="Pico"/>
+        <p style={{fontSize:21,fontWeight:800,color:TEXT,lineHeight:1.4,textAlign:'center',marginTop:4}}>Great job! You just accomplished<br/>Level 246!</p>
+      </div>
+      <div style={{padding:'0 24px 32px'}}>
+        <button onClick={onContinue} style={{width:'100%',background:GREENBTN,color:WHITE,border:'none',borderRadius:30,padding:'16px',fontSize:16,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 16px rgba(100,180,100,0.35)'}}>Continue</button>
+      </div>
+      <div style={{display:'flex',justifyContent:'center',paddingBottom:12}}>
+        <div style={{width:130,height:5,borderRadius:3,background:'#CCC'}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ── DEEP BREATH SCREEN ───────────────────────── */
+function WindIcon(){
+  return (
+    <svg width="90" height="74" viewBox="0 0 90 74">
+      {/* Wind line 1 — top */}
+      <path d="M22 22 C20 17 15 15 12 17 C9 19 10 24 15 24 L64 24"
+            stroke={TEXT} strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Wind line 2 — middle (longest) */}
+      <path d="M22 37 C20 32 15 30 12 32 C9 34 10 39 15 39 L74 39"
+            stroke={TEXT} strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Wind line 3 — bottom */}
+      <path d="M22 52 C20 47 15 45 12 47 C9 49 10 54 15 54 L58 54"
+            stroke={TEXT} strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Top-right leaf */}
+      <ellipse cx="70" cy="14" rx="13" ry="6" fill="#E8B840" stroke={TEXT} strokeWidth="1.8" transform="rotate(-28 70 14)"/>
+      <line x1="63" y1="17" x2="77" y2="11" stroke={TEXT} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+      {/* Bottom-right leaf */}
+      <ellipse cx="62" cy="62" rx="13" ry="6" fill="#E8B840" stroke={TEXT} strokeWidth="1.8" transform="rotate(22 62 62)"/>
+      <line x1="55" y1="59" x2="69" y2="65" stroke={TEXT} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+    </svg>
+  );
+}
+function DeepBreathScreen({onContinue}){
+  return (
+    <div className="screen-in" style={{position:'absolute',inset:0,zIndex:30,background:BG,display:'flex',flexDirection:'column'}}>
+      <StatusBar/>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 36px 20px'}}>
+        <div style={{width:164,height:164,borderRadius:82,background:'rgba(0,0,0,0.055)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:34}}>
+          <WindIcon/>
+        </div>
+        <p style={{fontSize:22,fontWeight:800,color:TEXT,marginBottom:10,textAlign:'center',letterSpacing:'-0.3px'}}>Take a deep breath</p>
+        <p style={{fontSize:15,color:TEXTMID,lineHeight:1.65,textAlign:'center'}}>You're about to meet<br/>a brighter future version of yourself</p>
+        <div style={{display:'flex',gap:7,marginTop:22}}>
+          <div style={{width:22,height:7,borderRadius:4,background:TEXT}}/>
+          <div style={{width:10,height:7,borderRadius:4,background:'#D0C8C0'}}/>
+        </div>
+      </div>
+      <div style={{padding:'0 24px 36px'}}>
+        <button onClick={onContinue} style={{width:'100%',background:GREENBTN,color:WHITE,border:'none',borderRadius:30,padding:'16px',fontSize:16,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 16px rgba(100,180,100,0.35)'}}>Continue</button>
+      </div>
+      <div style={{display:'flex',justifyContent:'center',paddingBottom:12}}>
+        <div style={{width:130,height:5,borderRadius:3,background:'#CCC'}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ── MAIN APP ─────────────────────────────────── */
+function App(){
+  const [step,setStep]             = useState(1);
+  const [messages,setMessages]     = useState([]);
+  const [isTyping,setIsTyping]     = useState(false);
+  const [phase,setPhase]           = useState('levelIntro');
+  const [catId,setCatId]           = useState(null);
+  const [sheet,setSheet]           = useState(null);
+  const [sheetExiting,setSheetExiting] = useState(false);
+  const [inputActive,setInputActive] = useState(false);
+  const [inputText,setInputText]   = useState('');
+  const [q6Text,setQ6Text]         = useState('');
+  const [photoMode,setPhotoMode]   = useState(false);
+  const [genMode,setGenMode]       = useState(false);
+  const [imagesMode,setImagesMode] = useState(false);
+  const [selImages,setSelImages]   = useState([]);
+  const [levelIntro2,setLevelIntro2] = useState(false);
+  const [reelMode,setReelMode]     = useState(false);
+  const [celebMode,setCelebMode]   = useState(false);
+
+  const scrollRef = useRef(null);
+  const bootDone  = useRef(false);
+
+  const scrollBottom = useCallback(()=>{ setTimeout(()=>{ if(scrollRef.current) scrollRef.current.scrollTop=scrollRef.current.scrollHeight; },60); },[]);
+  const addMsg = useCallback((msg)=>{ setMessages(prev=>[...prev,{id:Date.now()+Math.random(),...msg}]); scrollBottom(); },[scrollBottom]);
+  const picoSay = useCallback(async(content,delay=1300)=>{
+    setIsTyping(true); scrollBottom();
+    await sleep(delay); setIsTyping(false);
+    addMsg({role:'pico',content,time:nextTime()});
+  },[addMsg,scrollBottom]);
+
+  const showSheet = useCallback((options,question)=>{ setSheet({options,question}); setSheetExiting(false); scrollBottom(); },[scrollBottom]);
+  const dismissSheet = useCallback(()=>new Promise(resolve=>{
+    setSheetExiting(true);
+    setTimeout(()=>{ setSheet(null); setSheetExiting(false); resolve(); },280);
+  }),[]);
+
+  const startChat = useCallback(()=>{
+    if(bootDone.current) return;
+    bootDone.current=true;
+    clockMin=1;
+    setPhase('chatting');
+    (async()=>{
+      await sleep(400);
+      addMsg({role:'pico',time:nextTime(),content:(
+        <span><B>Which area of your life are you ready to transform?</B><br/><br/>
+        Remember: <B>One clear goal works better than many vague ones.</B> Keep it simple. Choose from the following topics:</span>
+      )});
+      await sleep(300);
+      showSheet(CATS.map(c=>c.emoji+' '+c.label),'Which area of your life are you ready to transform?');
+      setPhase('category');
+    })();
+  },[addMsg,showSheet]);
+
+  const handleSelect = useCallback(async(idx,opt)=>{
+    if(sheetExiting) return;
+    await dismissSheet();
+    if(phase==='category'){
+      const cat=CATS[idx]; setCatId(cat.id);
+      addMsg({role:'user',content:opt,time:nextTime()}); setStep(2);
+      const d=CDATA[cat.id];
+      await picoSay(<span>{d.affirm[0]} <B>{d.affirm[1]}</B><br/><br/>{d.q2.text}</span>,1400);
+      showSheet(d.q2.options,d.q2.text); setPhase('q2'); return;
+    }
+    const d=catId?CDATA[catId]:null;
+    if(phase==='q2'){ addMsg({role:'user',content:opt,time:nextTime()}); setStep(3); await picoSay(<span>{d.q3.text}</span>); showSheet(d.q3.options,d.q3.text); setPhase('q3'); return; }
+    if(phase==='q3'){ addMsg({role:'user',content:opt,time:nextTime()}); setStep(4); await picoSay(<span>{d.q4.text}</span>); showSheet(d.q4.options,d.q4.text); setPhase('q4'); return; }
+    if(phase==='q4'){ addMsg({role:'user',content:opt,time:nextTime()}); setStep(5); await picoSay(<span>{Q5.text}</span>); showSheet(Q5.options,Q5.text); setPhase('q5'); return; }
+    if(phase==='q5'){
+      addMsg({role:'user',content:opt,time:nextTime()}); setStep(6);
+      await picoSay(<span><B>What do you see?</B><br/><B>What emotion do you feel most?</B><br/><B>Can you describe it?</B><br/><br/><span style={{fontSize:13,color:TEXTMID}}>Hint: A sound, an object, someone's expression, something you're wearing, something happening around you...</span></span>);
+      setInputActive(true); setPhase('q6'); return;
+    }
+  },[phase,catId,sheetExiting,dismissSheet,addMsg,picoSay,showSheet]);
+
+  const handleQ6Submit = useCallback(async()=>{
+    if(!inputText.trim()) return;
+    const txt=inputText.trim(); setQ6Text(txt);
+    setInputText(''); setInputActive(false);
+    addMsg({role:'user',content:txt,time:nextTime()}); setStep(7);
+    await picoSay(<span><B>Beautiful.</B> Now add your photo — I'll place <B>you</B> inside your vision.<br/><br/>Take a selfie or upload a photo.</span>,1500);
+    setPhotoMode(true); setPhase('photo');
+  },[inputText,addMsg,picoSay]);
+
+  const handlePhotoUpload = useCallback(async()=>{
+    setPhotoMode(false);
+    addMsg({role:'user',content:'📸 Photo uploaded',time:nextTime()});
+    await picoSay(<span>Got it! <B>Creating your 4 visions...</B></span>,900);
+    setGenMode(true); await sleep(3000); setGenMode(false);
+    await picoSay(<span>Here are <B>4 versions of your vision.</B> Select the ones that resonate most — you can pick multiple.</span>,800);
+    setImagesMode(true); setPhase('images');
+  },[addMsg,picoSay]);
+
+  const toggleImage = useCallback((idx)=>{ setSelImages(prev=>prev.includes(idx)?prev.filter(i=>i!==idx):[...prev,idx]); },[]);
+
+  const handleImagesContinue = useCallback(()=>{
+    setImagesMode(false); setLevelIntro2(true); setPhase('levelIntro2');
+  },[]);
+
+  return (
+    <div style={{width:390,background:'#111',borderRadius:50,padding:'0 8px 8px',boxShadow:'0 30px 80px rgba(0,0,0,0.6)',userSelect:'none'}}>
+      <div style={{display:'flex',justifyContent:'center',paddingTop:10,paddingBottom:4}}>
+        <div style={{width:120,height:34,background:'#111',borderRadius:20}}/>
+      </div>
+      <div style={{background:BG,borderRadius:40,overflow:'hidden',display:'flex',flexDirection:'column',height:820,position:'relative'}}>
+
+        <StatusBar/>
+        <ProgressBar step={step}/>
+
+        {/* Chat */}
+        <div ref={scrollRef} style={{flex:1,overflowY:'auto',paddingTop:4}}>
+          {messages.map(m=>m.role==='pico'
+            ?<PicoMsg key={m.id} time={m.time}>{m.content}</PicoMsg>
+            :<UserMsg key={m.id} time={m.time}>{m.content}</UserMsg>
+          )}
+          {isTyping&&<TypingIndicator/>}
+          {!isTyping&&photoMode&&<PhotoUpload onUpload={handlePhotoUpload}/>}
+          {!isTyping&&genMode&&<GeneratingLoader/>}
+          {!isTyping&&imagesMode&&<GeneratedImages selImages={selImages} onToggle={toggleImage}/>}
+          <div style={{height:8}}/>
+        </div>
+
+        {/* Bottom */}
+        {phase==='images'&&!isTyping
+          ?<ContinueBtn onPress={handleImagesContinue} disabled={selImages.length===0}/>
+          :inputActive
+            ?<ActiveBar text={inputText} setText={setInputText} onSend={handleQ6Submit}/>
+            :<StaticBar/>
+        }
+        {!reelMode&&!celebMode&&!levelIntro2&&phase!=='levelIntro'&&phase!=='deepBreath'&&(
+          <div style={{display:'flex',justifyContent:'center',padding:'8px 0 10px',background:BG}}>
+            <div style={{width:130,height:5,borderRadius:3,background:'#CCC'}}/>
+          </div>
+        )}
+
+        {/* Bottom sheet */}
+        {sheet&&<BottomSheet options={sheet.options} question={sheet.question} onSelect={handleSelect} exiting={sheetExiting}/>}
+
+        {/* Level intro — first screen */}
+        {phase==='levelIntro'&&(
+          <LevelIntroScreen level={476}
+            onStart={()=>setPhase('deepBreath')}
+            onSkip={()=>setPhase('deepBreath')}
+          />
+        )}
+
+        {/* Deep breath screen */}
+        {phase==='deepBreath'&&(
+          <DeepBreathScreen onContinue={()=>{ setPhase('chatting'); startChat(); }}/>
+        )}
+
+        {/* Level intro — before reel */}
+        {levelIntro2&&(
+          <LevelIntroScreen level={477}
+            onStart={()=>{ setLevelIntro2(false); setReelMode(true); setPhase('reel'); }}
+            onSkip={()=>{ setLevelIntro2(false); setReelMode(true); setPhase('reel'); }}
+          />
+        )}
+
+        {/* Reel */}
+        {reelMode&&<ReelView selImages={selImages.length>0?selImages:[0]} userText={q6Text} onDone={()=>{ setReelMode(false); setCelebMode(true); setPhase('celebration'); }}/>}
+
+        {/* Celebration */}
+        {celebMode&&<CelebrationScreen onContinue={()=>{ setCelebMode(false); setPhase('done'); }}/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+    <App/>
+    <div className="phone-label">ReelYou — Tap to interact</div>
+  </div>
+);
+</script>
+<div id="root"></div>
+</body>
+</html>
