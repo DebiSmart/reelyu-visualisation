@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReelYou – Visualization Chat Flow</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+</style>
+</head>
+<body>
+<script type="text/babel">
+
+/* ─── SHARED TOKENS ────────────────────────────────────────── */
+const C = {
+  bg:       '#F5EFE6',
+  bgDark:   '#1C1410',
+  white:    '#FFFFFF',
+  bubble:   '#FFFFFF',
+  userBubble: '#EDE8E0',
+  userBubbleDark: '#2E2520',
+  bubbleDark: '#2A2420',
+  border:   '#E0D8CE',
+  borderDark:'#3A3028',
+  purple:   '#8B5CF6',
+  purpleLight:'#C4B5FD',
+  green:    '#4CAF50',
+  greenPale:'#E8F5E2',
+  greenPaleDark:'#1A3020',
+  text:     '#1A1410',
+  textMid:  '#6B6058',
+  textDark: '#F0EAE0',
+  textMidDark:'#8A7A6A',
+  stamp:    '#9A9080',
+};
+
+const PICO_SRC = 'uploads/Pico_1.png';
+
+/* ─── PHONE SHELL ───────────────────────────────────────────── */
+function Phone({ children, dark = false, label }) {
+  const bg = dark ? C.bgDark : C.bg;
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
+      <div style={{
+        width: 390, background:'#111', borderRadius:50,
+        padding:'0 8px 8px',
+        boxShadow:'0 30px 80px rgba(0,0,0,0.5)',
+        position:'relative',
+      }}>
+        {/* Notch */}
+        <div style={{ display:'flex', justifyContent:'center', paddingTop:10, paddingBottom:4 }}>
+          <div style={{ width:120, height:34, background:'#111', borderRadius:20 }} />
+        </div>
+
+        {/* Screen */}
+        <div style={{
+          background: bg, borderRadius: 40,
+          overflow:'hidden', position:'relative',
+        }}>
+          {/* Status bar */}
+          <div style={{
+            display:'flex', justifyContent:'space-between', alignItems:'center',
+            padding:'10px 24px 6px', background: bg,
+          }}>
+            <span style={{ fontSize:15, fontWeight:700, color: dark ? C.textDark : C.text }}>9:57</span>
+            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+              <svg width="17" height="12" viewBox="0 0 17 12"><rect x="0" y="3" width="3" height="9" rx="1" fill={dark?'#CCC':'#333'}/><rect x="4.5" y="2" width="3" height="10" rx="1" fill={dark?'#CCC':'#333'}/><rect x="9" y="0" width="3" height="12" rx="1" fill={dark?'#CCC':'#333'}/><rect x="13.5" y="0" width="3" height="12" rx="1" fill={dark?'#CCC':'#333'} opacity="0.3"/></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.4C10.5 2.4 12.7 3.5 14.2 5.2L15.5 3.9C13.6 1.8 10.9 0.5 8 0.5C5.1 0.5 2.4 1.8 0.5 3.9L1.8 5.2C3.3 3.5 5.5 2.4 8 2.4Z" fill={dark?'#CCC':'#333'}/><path d="M8 5.4C9.8 5.4 11.4 6.2 12.5 7.5L13.8 6.2C12.3 4.6 10.3 3.6 8 3.6C5.7 3.6 3.7 4.6 2.2 6.2L3.5 7.5C4.6 6.2 6.2 5.4 8 5.4Z" fill={dark?'#CCC':'#333'}/><circle cx="8" cy="10" r="1.5" fill={dark?'#CCC':'#333'}/></svg>
+              <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="3" stroke={dark?'#CCC':'#333'} strokeWidth="1.2" fill="none"/><rect x="22" y="3.5" width="2" height="5" rx="1" fill={dark?'#CCC':'#333'} opacity="0.5"/><rect x="1.5" y="2.5" width="15" height="7" rx="2" fill={dark?'#CCC':'#333'}/></svg>
+            </div>
+          </div>
+
+          {/* Scrollable content */}
+          <div style={{ height: 780, overflowY:'auto', background: bg }}>
+            {children}
+          </div>
+
+          {/* Home indicator */}
+          <div style={{ display:'flex', justifyContent:'center', padding:'8px 0 12px', background: bg }}>
+            <div style={{ width:130, height:5, borderRadius:3, background: dark?'#555':'#CCC' }} />
+          </div>
+        </div>
+      </div>
+      {label && <div style={{ color:'#AAA', fontSize:14, fontWeight:500, letterSpacing:'0.05em' }}>{label}</div>}
+    </div>
+  );
+}
+
+/* ─── PROGRESS HEADER ───────────────────────────────────────── */
+function ProgressHeader({ step, total = 7, dark = false, styleV = 'A' }) {
+  const bg = dark ? C.bgDark : C.bg;
+  const fillPct = `${Math.round((step / total) * 100)}%`;
+
+  if (styleV === 'B') {
+    return (
+      <div style={{ padding:'10px 16px 12px', background: dark?C.bubbleDark:C.white, borderBottom:`1px solid ${dark?C.borderDark:C.border}` }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+          <div style={{ fontSize:20, cursor:'pointer', color: dark?C.textDark:C.text }}>←</div>
+          <div style={{ flex:1 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+              <span style={{ fontSize:12, color: dark?C.textMidDark:C.textMid, fontWeight:600 }}>Step {step} of {total}</span>
+              <span style={{ fontSize:12, color:C.purple, fontWeight:600 }}>{fillPct}</span>
+            </div>
+            <div style={{ height:6, background: dark?C.borderDark:C.border, borderRadius:4, overflow:'hidden' }}>
+              <div style={{ width: fillPct, height:'100%', background:`linear-gradient(90deg, ${C.purple}, ${C.purpleLight})`, borderRadius:4, transition:'width 0.4s' }} />
+            </div>
+          </div>
+          <div style={{ fontSize:22 }}>🌸</div>
+        </div>
+        {/* Step dots */}
+        <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
+          {Array.from({length: total}).map((_,i) => (
+            <div key={i} style={{
+              width: i+1 <= step ? 20 : 8, height:8,
+              borderRadius:4,
+              background: i+1 <= step ? C.purple : (dark?C.borderDark:C.border),
+              transition:'all 0.3s',
+            }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:'10px 16px 12px', background: bg }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ fontSize:20, color: dark?C.textDark:C.text }}>←</div>
+        <div style={{ flex:1, height:10, background: dark?'#3A3028':'#E0D5C8', borderRadius:10, overflow:'hidden' }}>
+          <div style={{ width: fillPct, height:'100%', background:`linear-gradient(90deg, ${C.purple}, ${C.purpleLight})`, borderRadius:10, transition:'width 0.4s' }} />
+        </div>
+        <div style={{ fontSize:22 }}>🌸</div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── PICO ROW ───────────────────────────────────────────────── */
+function PicoRow({ dark }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0 14px 6px' }}>
+      <div style={{ width:36, height:36, borderRadius:18, overflow:'hidden', background:'#E8F5E2', flexShrink:0, border:`2px solid ${dark?C.greenPaleDark:C.greenPale}` }}>
+        <img src={PICO_SRC} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+      </div>
+      <span style={{ fontSize:13, fontWeight:700, color: dark?C.textDark:C.text }}>Pico Assistant</span>
+    </div>
+  );
+}
+
+/* ─── CHAT BUBBLE ────────────────────────────────────────────── */
+function PicoBubble({ children, dark, time='12:01', styleV='A' }) {
+  if (styleV === 'C') {
+    return (
+      <div style={{ padding:'4px 14px 10px' }}>
+        <PicoRow dark={dark} />
+        <div style={{
+          marginLeft:44,
+          background: dark ? 'rgba(255,255,255,0.06)' : C.bubble,
+          borderRadius:'0 18px 18px 18px',
+          padding:'12px 14px',
+          border:`1px solid ${dark?'rgba(255,255,255,0.1)':C.border}`,
+          backdropFilter: dark ? 'blur(10px)' : 'none',
+          boxShadow: dark ? 'none' : '0 2px 8px rgba(0,0,0,0.06)',
+        }}>
+          {children}
+          <div style={{ textAlign:'right', marginTop:6, fontSize:11, color:C.stamp }}>
+            {time} <span style={{opacity:0.5}}>✓</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding:'4px 14px 10px' }}>
+      <PicoRow dark={dark} />
+      <div style={{
+        marginLeft:44,
+        background: dark ? C.bubbleDark : C.bubble,
+        borderRadius:'0 18px 18px 18px',
+        padding:'12px 14px',
+        border:`1px solid ${dark?C.borderDark:C.border}`,
+        boxShadow: dark?'none':'0 2px 8px rgba(0,0,0,0.06)',
+      }}>
+        {children}
+        <div style={{ textAlign:'right', marginTop:6, fontSize:11, color:C.stamp }}>
+          {time} <span style={{opacity:0.4}}>✓</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserBubble({ children, dark, time='12:05', styleV='A' }) {
+  return (
+    <div style={{ padding:'4px 14px 10px', display:'flex', justifyContent:'flex-end' }}>
+      <div style={{
+        maxWidth:'75%',
+        background: dark ? (styleV==='C'?'rgba(140,100,255,0.25)':C.userBubbleDark) : C.userBubble,
+        borderRadius:'18px 0 18px 18px',
+        padding:'12px 14px',
+        border:`1px solid ${dark?C.borderDark:C.border}`,
+        boxShadow: dark?'none':'0 2px 8px rgba(0,0,0,0.06)',
+      }}>
+        {children}
+        <div style={{ textAlign:'right', marginTop:4, fontSize:11, color:C.stamp }}>
+          {time} <span style={{opacity:0.4}}>✓</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BText({ children, dark, bold }) {
+  return (
+    <span style={{
+      fontSize:14, lineHeight:'1.5',
+      color: dark?C.textDark:C.text,
+      fontWeight: bold ? 700 : 400,
+    }}>{children}</span>
+  );
+}
+
+function BLine({ children, dark, bold }) {
+  return (
+    <div style={{ marginBottom:2 }}>
+      <BText dark={dark} bold={bold}>{children}</BText>
+    </div>
+  );
+}
+
+/* ─── CHOICE BUTTONS ─────────────────────────────────────────── */
+function Choices({ items, selected, dark, styleV='A' }) {
+  if (styleV === 'B') {
+    return (
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, padding:'8px 14px' }}>
+        {items.map((item, i) => {
+          const isSelected = selected === i;
+          return (
+            <div key={i} style={{
+              background: isSelected ? C.purple : (dark ? C.bubbleDark : C.white),
+              border:`2px solid ${isSelected ? C.purple : (dark?C.borderDark:C.border)}`,
+              borderRadius:14,
+              padding:'10px 10px',
+              display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+              cursor:'pointer',
+            }}>
+              <span style={{ fontSize:22 }}>{item.split(' ')[0]}</span>
+              <span style={{ fontSize:11, textAlign:'center', lineHeight:1.3, color: isSelected ? '#FFF' : (dark?C.textDark:C.text) }}>
+                {item.split(' ').slice(1).join(' ')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:'4px 14px 8px', display:'flex', flexDirection:'column', gap:8 }}>
+      {items.map((item, i) => {
+        const isSelected = selected === i;
+        return (
+          <div key={i} style={{
+            background: isSelected ? C.greenPale : (dark ? C.bubbleDark : C.white),
+            border:`1.5px solid ${isSelected ? C.green : (dark?C.borderDark:C.border)}`,
+            borderRadius:30,
+            padding:'11px 16px',
+            display:'flex', alignItems:'center', gap:8,
+            cursor:'pointer',
+          }}>
+            <span style={{ fontSize:18, lineHeight:1 }}>{item.split(' ')[0]}</span>
+            <span style={{ fontSize:13, color: dark?C.textDark:C.text, flex:1 }}>
+              {item.split(' ').slice(1).join(' ')}
+            </span>
+            {isSelected && <span style={{ color:C.green, fontSize:16 }}>✓</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CTAButton({ label, dark, styleV='A' }) {
+  if (styleV === 'B') {
+    return (
+      <div style={{ padding:'4px 14px 12px', display:'flex', justifyContent:'flex-end' }}>
+        <div style={{
+          background: C.purple,
+          color:'#FFF',
+          borderRadius:30, padding:'12px 24px',
+          fontSize:14, fontWeight:700, cursor:'pointer',
+        }}>{label}</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding:'4px 14px 12px', display:'flex', justifyContent:'flex-end' }}>
+      <div style={{
+        background: dark?C.bubbleDark:C.white,
+        border:`1.5px solid ${dark?C.borderDark:C.border}`,
+        borderRadius:30, padding:'11px 22px',
+        fontSize:14, fontWeight:600, cursor:'pointer',
+        color: dark?C.textDark:C.text,
+      }}>{label}</div>
+    </div>
+  );
+}
+
+function Divider({ dark }) {
+  return <div style={{ height:1, margin:'4px 14px', background: dark?C.borderDark:C.border, opacity:0.5 }} />;
+}
+
+function SectionLabel({ children, dark }) {
+  return (
+    <div style={{ padding:'8px 14px 2px', textAlign:'center' }}>
+      <span style={{ fontSize:11, color: dark?C.textMidDark:C.textMid, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em' }}>{children}</span>
+    </div>
+  );
+}
+
+/* ─── PHOTO UPLOAD BLOCK ──────────────────────────────────────── */
+function PhotoUpload({ dark, styleV='A' }) {
+  return (
+    <div style={{ padding:'6px 14px 10px' }}>
+      <div style={{
+        border:`2px dashed ${dark?C.borderDark:C.border}`,
+        borderRadius:20, padding:'20px',
+        display:'flex', flexDirection:'column', alignItems:'center', gap:10,
+        background: dark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)',
+      }}>
+        <div style={{ fontSize:36 }}>📸</div>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:14, fontWeight:700, color: dark?C.textDark:C.text, marginBottom:4 }}>Add your photo</div>
+          <div style={{ fontSize:12, color:dark?C.textMidDark:C.textMid, lineHeight:1.4 }}>
+            Take a selfie or upload a photo to place yourself into your vision
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:10 }}>
+          <div style={{ background:C.purple, color:'#FFF', borderRadius:20, padding:'8px 16px', fontSize:13, fontWeight:600 }}>📷 Take selfie</div>
+          <div style={{ background: dark?C.bubbleDark:C.white, border:`1.5px solid ${dark?C.borderDark:C.border}`, borderRadius:20, padding:'8px 16px', fontSize:13, fontWeight:600, color: dark?C.textDark:C.text }}>Upload photo</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── GENERATED IMAGES BLOCK ──────────────────────────────────── */
+function GeneratedImages({ dark, styleV='A' }) {
+  const labels = ['Still & Intimate', 'Electric Moment', 'Celebratory', 'In Motion'];
+  const colors = ['#C8DFF0','#F0D8C8','#D8C8F0','#C8F0D8'];
+  const colorsDark = ['#1A2A38','#382A1A','#2A1A38','#1A3828'];
+
+  if (styleV === 'B') {
+    return (
+      <div style={{ padding:'6px 14px 12px' }}>
+        <div style={{ fontSize:13, fontWeight:700, color: dark?C.textDark:C.text, marginBottom:10, textAlign:'center' }}>
+          Choose your vision
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {labels.map((lbl, i) => (
+            <div key={i} style={{
+              background: dark ? colorsDark[i] : colors[i],
+              borderRadius:16, height:120,
+              border:`2px solid ${i===0?C.purple:(dark?C.borderDark:'transparent')}`,
+              overflow:'hidden', position:'relative',
+              cursor:'pointer',
+            }}>
+              <div style={{
+                position:'absolute', bottom:0, left:0, right:0,
+                background:'rgba(0,0,0,0.4)', padding:'6px 8px',
+                borderRadius:'0 0 14px 14px',
+              }}>
+                <div style={{ fontSize:10, color:'#FFF', fontWeight:600 }}>{lbl}</div>
+              </div>
+              {i===0 && <div style={{
+                position:'absolute', top:4, right:4,
+                background:C.purple, borderRadius:10, padding:'2px 6px',
+                fontSize:9, color:'#FFF', fontWeight:700,
+              }}>✓ Selected</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:'6px 14px 12px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+        {labels.map((lbl, i) => (
+          <div key={i} style={{
+            background: dark ? colorsDark[i] : colors[i],
+            borderRadius:14, height:110,
+            border:`2px solid ${i===0?C.green:(dark?C.borderDark:'transparent')}`,
+            overflow:'hidden', position:'relative',
+            cursor:'pointer',
+          }}>
+            <div style={{
+              position:'absolute', bottom:0, left:0, right:0,
+              background:'rgba(0,0,0,0.35)', padding:'5px 8px',
+              borderRadius:'0 0 12px 12px',
+            }}>
+              <div style={{ fontSize:10, color:'#FFF', fontWeight:600 }}>{lbl}</div>
+            </div>
+            {i===0 && <div style={{
+              position:'absolute', top:4, right:4,
+              background:C.green, borderRadius:8, padding:'2px 5px',
+              fontSize:9, color:'#FFF', fontWeight:700,
+            }}>✓</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── BOTTOM BAR ──────────────────────────────────────────────── */
+function BottomBar({ dark, placeholder='Ask anything', styleV='A' }) {
+  return (
+    <div style={{
+      position:'sticky', bottom:0,
+      background: dark?C.bgDark:C.bg,
+      borderTop:`1px solid ${dark?C.borderDark:C.border}`,
+      padding:'10px 14px',
+      display:'flex', alignItems:'center', gap:10,
+    }}>
+      <div style={{
+        width:32, height:32, borderRadius:16,
+        border:`1.5px solid ${dark?C.borderDark:C.border}`,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        color: dark?C.textDark:C.text, fontSize:18, cursor:'pointer',
+      }}>+</div>
+      <div style={{
+        flex:1, background: dark?C.bubbleDark:C.white,
+        border:`1px solid ${dark?C.borderDark:C.border}`,
+        borderRadius:20, padding:'9px 14px',
+        fontSize:13, color:dark?C.textMidDark:C.textMid,
+      }}>{placeholder}</div>
+      <div style={{
+        width:32, height:32, borderRadius:16,
+        background:dark?C.bubbleDark:C.white,
+        border:`1.5px solid ${dark?C.borderDark:C.border}`,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        cursor:'pointer',
+      }}>
+        <svg width="14" height="18" viewBox="0 0 14 18"><rect x="4" y="0" width="6" height="11" rx="3" fill={dark?C.textDark:C.textMid}/><path d="M1 8C1 11.9 3.7 15 7 15C10.3 15 13 11.9 13 8" stroke={dark?C.textDark:C.textMid} strokeWidth="1.5" fill="none" strokeLinecap="round"/><line x1="7" y1="15" x2="7" y2="18" stroke={dark?C.textDark:C.textMid} strokeWidth="1.5" strokeLinecap="round"/></svg>
+      </div>
+    </div>
+  );
+}
+
+/* ─── QUESTION CARD (Variation B) ────────────────────────────── */
+function QuestionCard({ qNum, qLabel, qText, children, dark }) {
+  return (
+    <div style={{ padding:'6px 14px' }}>
+      <div style={{
+        background: dark?C.bubbleDark:C.white,
+        borderRadius:20, overflow:'hidden',
+        border:`1px solid ${dark?C.borderDark:C.border}`,
+        boxShadow: dark?'none':'0 2px 12px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{ padding:'12px 14px 8px', borderBottom:`1px solid ${dark?C.borderDark:C.border}` }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+            <div style={{ background:C.purple, color:'#FFF', borderRadius:10, padding:'2px 8px', fontSize:11, fontWeight:700 }}>Q{qNum}</div>
+            <span style={{ fontSize:12, color: dark?C.textMidDark:C.textMid, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>{qLabel}</span>
+          </div>
+          <div style={{ fontSize:15, fontWeight:700, color: dark?C.textDark:C.text, lineHeight:1.4 }}>{qText}</div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ─── VARIATION A: Classic Chat ──────────────────────────────── */
+function FlowA() {
+  const dark = false;
+  const sv = 'A';
+  return (
+    <>
+      <ProgressHeader step={1} dark={dark} styleV={sv} />
+
+      <SectionLabel dark={dark}>Category Selection</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv}>
+        <BLine dark={dark} bold>Which area of your life are you ready to transform?</BLine>
+        <div style={{ height:6 }} />
+        <BLine dark={dark}>Remember: <BText bold dark={dark}>One clear goal works better than many vague ones.</BText> Choose a topic:</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV={sv} selected={0} items={[
+        '❤️ Love Relationship','👨‍👩‍👧 Family & Friends','💪 Health & Fitness',
+        '💼 Career','💰 Financial','🌟 Life Purpose','✨ Quality of Life','🌍 Contribution',
+      ]} />
+      <UserBubble dark={dark} styleV={sv}>
+        <BText dark={dark}>❤️ Love Relationship</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={2} dark={dark} styleV={sv} />
+      <SectionLabel dark={dark}>Q2 — Who</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:02">
+        <BLine dark={dark} bold>If this moment of love could be captured in a picture — who is in it with you?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV={sv} selected={1} items={[
+        '👤 Just me — fully ready, open, waiting for nothing',
+        '💑 Me and my partner — this is our moment',
+        '👥 Us, surrounded by the people we love',
+        '🌫️ A presence beside me — someone I haven\'t met yet',
+        '👁️ I\'m the viewer — the scene unfolds in front of me',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:02">
+        <BText dark={dark}>💑 Me and my partner — this is our moment</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={3} dark={dark} styleV={sv} />
+      <SectionLabel dark={dark}>Q3 — What</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:03">
+        <BLine dark={dark} bold>What is actually happening in this moment?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV={sv} selected={0} items={[
+        '👀 We\'re looking at each other — nothing else needed',
+        '🌍 We\'re somewhere together — moving through the world',
+        '🥂 We\'re celebrating — others around us, joy everywhere',
+        '😌 A quiet, still moment — just existing together',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:03">
+        <BText dark={dark}>👀 We're looking at each other — nothing else needed</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={4} dark={dark} styleV={sv} />
+      <SectionLabel dark={dark}>Q4 — Where</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:04">
+        <BLine dark={dark} bold>Where does this moment take place?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV={sv} selected={2} items={[
+        '🏠 At home — warm light, intimate space',
+        '🌊 Somewhere in nature — open, vast, alive',
+        '🌍 A beautiful place in the world we\'re discovering together',
+        '🏙️ A city — energy, movement, life around us',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:04">
+        <BText dark={dark}>🌍 A beautiful place in the world we're discovering together</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={5} dark={dark} styleV={sv} />
+      <SectionLabel dark={dark}>Q5 — Energy</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:04">
+        <BLine dark={dark} bold>What's the energy of this moment?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV={sv} selected={1} items={[
+        '🌊 Still and quiet — time has stopped',
+        '⚡ Electric — something is about to happen, or just did',
+        '🌀 In motion — we\'re moving, going somewhere, alive in it',
+        '🔥 Celebratory — big, loud, full of life',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:05">
+        <BText dark={dark}>⚡ Electric — something is about to happen, or just did</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={6} dark={dark} styleV={sv} />
+      <SectionLabel dark={dark}>Q6 — The Detail</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:05">
+        <BLine dark={dark} bold>What do you see? What emotion do you feel most?</BLine>
+        <BLine dark={dark}>Can you describe it?</BLine>
+        <div style={{ height:4 }} />
+        <BLine dark={dark}><BText dark={dark} bold>Hint:</BText> A sound, an object, someone's expression, something you're wearing...</BLine>
+      </PicoBubble>
+      <UserBubble dark={dark} styleV={sv} time="12:06">
+        <BText dark={dark}>We're standing on a cobblestone street at golden hour. He's looking at me like I'm the whole scene. There's soft music from somewhere nearby.</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={7} dark={dark} styleV={sv} />
+      <SectionLabel dark={dark}>Photo & Generation</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:06">
+        <BLine dark={dark} bold>Beautiful. Now add your photo — I'll place you inside your vision.</BLine>
+        <div style={{ height:4 }} />
+        <BLine dark={dark}>You can take a selfie or upload a photo.</BLine>
+      </PicoBubble>
+      <PhotoUpload dark={dark} styleV={sv} />
+
+      <PicoBubble dark={dark} styleV={sv} time="12:08">
+        <BLine dark={dark} bold>Here are 4 versions of your vision. Which one resonates most?</BLine>
+      </PicoBubble>
+      <GeneratedImages dark={dark} styleV={sv} />
+      <CTAButton label="✓ This is my vision" dark={dark} styleV={sv} />
+
+      <div style={{ height:20 }} />
+      <BottomBar dark={dark} placeholder="Ask anything" styleV={sv} />
+    </>
+  );
+}
+
+/* ─── VARIATION B: Structured Cards ──────────────────────────── */
+function FlowB() {
+  const dark = false;
+  const sv = 'B';
+  return (
+    <>
+      <ProgressHeader step={1} total={7} dark={dark} styleV={sv} />
+
+      <div style={{ padding:'10px 14px 6px' }}>
+        <PicoRow dark={dark} />
+        <div style={{
+          marginLeft:44,
+          background:C.white, borderRadius:'0 18px 18px 18px',
+          padding:'12px 14px', border:`1px solid ${C.border}`,
+          boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
+        }}>
+          <BLine dark={dark} bold>Which area of your life are you ready to transform?</BLine>
+          <div style={{ height:4 }} />
+          <BLine dark={dark}><BText bold dark={dark}>One clear goal works better than many vague ones.</BText></BLine>
+          <div style={{ textAlign:'right', marginTop:6, fontSize:11, color:C.stamp }}>12:01 ✓</div>
+        </div>
+      </div>
+
+      {/* Category grid */}
+      <div style={{ padding:'6px 14px 12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+        {[
+          ['❤️','Love\nRelationship'],['👨‍👩‍👧','Family &\nFriends'],
+          ['💪','Health &\nFitness'],['💼','Career'],
+          ['💰','Financial'],['🌟','Life Purpose'],
+          ['✨','Quality of\nLife'],['🌍','Contribution'],
+        ].map(([emoji, label], i) => (
+          <div key={i} style={{
+            background: i===0 ? C.purple : C.white,
+            border:`2px solid ${i===0?C.purple:C.border}`,
+            borderRadius:16, padding:'12px 8px',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+            cursor:'pointer',
+          }}>
+            <span style={{ fontSize:24 }}>{emoji}</span>
+            <span style={{ fontSize:11, textAlign:'center', lineHeight:1.3, fontWeight:600, color: i===0?'#FFF':C.text, whiteSpace:'pre-line' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <ProgressHeader step={2} total={7} dark={dark} styleV={sv} />
+      <QuestionCard qNum={2} qLabel="Who" qText="If this moment could be captured in a picture — who is in it with you?" dark={dark}>
+        <Choices dark={dark} styleV={sv} selected={1} items={[
+          '👤 Just me','💑 Me & my partner','👥 With loved ones around','🌫️ A presence I haven\'t met','👁️ I\'m the viewer',
+        ]} />
+      </QuestionCard>
+
+      <ProgressHeader step={3} total={7} dark={dark} styleV={sv} />
+      <QuestionCard qNum={3} qLabel="What" qText="What is actually happening in this moment?" dark={dark}>
+        <Choices dark={dark} styleV={sv} selected={0} items={[
+          '👀 We\'re looking at each other','🌍 Moving through the world','🥂 Celebrating together','😌 A quiet, still moment',
+        ]} />
+      </QuestionCard>
+
+      <ProgressHeader step={4} total={7} dark={dark} styleV={sv} />
+      <QuestionCard qNum={4} qLabel="Where" qText="Where does this moment take place?" dark={dark}>
+        <Choices dark={dark} styleV={sv} selected={2} items={[
+          '🏠 At home','🌊 In nature','🌍 Beautiful place in the world','🏙️ A city',
+        ]} />
+      </QuestionCard>
+
+      <ProgressHeader step={5} total={7} dark={dark} styleV={sv} />
+      <QuestionCard qNum={5} qLabel="Energy" qText="What's the energy of this moment?" dark={dark}>
+        <Choices dark={dark} styleV={sv} selected={1} items={[
+          '🌊 Still & quiet','⚡ Electric','🌀 In motion','🔥 Celebratory',
+        ]} />
+      </QuestionCard>
+
+      <ProgressHeader step={6} total={7} dark={dark} styleV={sv} />
+      <div style={{ padding:'6px 14px' }}>
+        <div style={{
+          background:C.white, borderRadius:20,
+          border:`1px solid ${C.border}`,
+          boxShadow:'0 2px 12px rgba(0,0,0,0.06)',
+          overflow:'hidden',
+        }}>
+          <div style={{ padding:'12px 14px 8px', borderBottom:`1px solid ${C.border}` }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              <div style={{ background:C.purple, color:'#FFF', borderRadius:10, padding:'2px 8px', fontSize:11, fontWeight:700 }}>Q6</div>
+              <span style={{ fontSize:12, color:C.textMid, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>The Detail</span>
+            </div>
+            <div style={{ fontSize:15, fontWeight:700, color:C.text, lineHeight:1.4 }}>What's one detail that makes this moment feel real to you?</div>
+            <div style={{ fontSize:12, color:C.textMid, marginTop:4 }}>A sound, an object, someone's expression, something you're wearing...</div>
+          </div>
+          <div style={{ padding:'12px 14px' }}>
+            <div style={{ background:C.bg, borderRadius:12, padding:'10px 12px', border:`1px solid ${C.border}`, minHeight:70, fontSize:13, color:C.text, lineHeight:1.5 }}>
+              We're standing on a cobblestone street at golden hour. He's looking at me like I'm the whole scene...
+            </div>
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:8 }}>
+              <div style={{ background:C.purple, color:'#FFF', borderRadius:20, padding:'8px 18px', fontSize:13, fontWeight:700 }}>Continue →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ProgressHeader step={7} total={7} dark={dark} styleV={sv} />
+      <div style={{ padding:'6px 14px' }}>
+        <div style={{
+          background:C.white, borderRadius:20,
+          border:`1px solid ${C.border}`,
+          boxShadow:'0 2px 12px rgba(0,0,0,0.06)',
+          overflow:'hidden',
+        }}>
+          <div style={{ padding:'12px 14px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:8 }}>
+            <img src={PICO_SRC} style={{ width:28, height:28, borderRadius:14, objectFit:'cover' }} />
+            <div style={{ fontSize:14, fontWeight:700, color:C.text }}>Add yourself to your vision</div>
+          </div>
+          <PhotoUpload dark={dark} styleV={sv} />
+        </div>
+      </div>
+
+      <div style={{ padding:'0 14px' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:6, textAlign:'center' }}>Your 4 generated visions</div>
+      </div>
+      <GeneratedImages dark={dark} styleV={sv} />
+      <CTAButton label="✓ This is my vision" dark={dark} styleV={sv} />
+
+      <div style={{ height:20 }} />
+      <BottomBar dark={dark} placeholder="Ask & answer anything" styleV={sv} />
+    </>
+  );
+}
+
+/* ─── VARIATION C: Dark Mode Chat ────────────────────────────── */
+function FlowC() {
+  const dark = true;
+  const sv = 'C';
+  return (
+    <>
+      <ProgressHeader step={1} dark={dark} styleV='A' />
+
+      <SectionLabel dark={dark}>Category Selection</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv}>
+        <BLine dark={dark} bold>Which area of your life are you ready to transform?</BLine>
+        <div style={{ height:6 }} />
+        <BLine dark={dark}>Remember: <BText bold dark={dark}>One clear goal works better than many vague ones.</BText> Choose a topic:</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV='A' selected={0} items={[
+        '❤️ Love Relationship','👨‍👩‍👧 Family & Friends','💪 Health & Fitness',
+        '💼 Career','💰 Financial','🌟 Life Purpose','✨ Quality of Life','🌍 Contribution',
+      ]} />
+      <UserBubble dark={dark} styleV={sv}>
+        <BText dark={dark}>❤️ Love Relationship</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={2} dark={dark} styleV='A' />
+      <SectionLabel dark={dark}>Q2 — Who</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:02">
+        <BLine dark={dark} bold>If this moment of love could be captured in a picture — who is in it with you?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV='A' selected={1} items={[
+        '👤 Just me — fully ready, open, waiting for nothing',
+        '💑 Me and my partner — this is our moment',
+        '👥 Us, surrounded by the people we love',
+        '🌫️ A presence beside me — someone I haven\'t met yet',
+        '👁️ I\'m the viewer — the scene unfolds in front of me',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:02">
+        <BText dark={dark}>💑 Me and my partner — this is our moment</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={3} dark={dark} styleV='A' />
+      <SectionLabel dark={dark}>Q3 — What</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:03">
+        <BLine dark={dark} bold>What is actually happening in this moment?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV='A' selected={0} items={[
+        '👀 We\'re looking at each other — nothing else needed',
+        '🌍 We\'re somewhere together — moving through the world',
+        '🥂 We\'re celebrating — others around us, joy everywhere',
+        '😌 A quiet, still moment — just existing together',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:03">
+        <BText dark={dark}>👀 We're looking at each other — nothing else needed</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={4} dark={dark} styleV='A' />
+      <SectionLabel dark={dark}>Q4 — Where</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:04">
+        <BLine dark={dark} bold>Where does this moment take place?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV='A' selected={2} items={[
+        '🏠 At home — warm light, intimate space',
+        '🌊 Somewhere in nature — open, vast, alive',
+        '🌍 A beautiful place in the world we\'re discovering together',
+        '🏙️ A city — energy, movement, life around us',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:04">
+        <BText dark={dark}>🌍 A beautiful place in the world we're discovering together</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={5} dark={dark} styleV='A' />
+      <SectionLabel dark={dark}>Q5 — Energy</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:04">
+        <BLine dark={dark} bold>What's the energy of this moment?</BLine>
+      </PicoBubble>
+      <Choices dark={dark} styleV='A' selected={1} items={[
+        '🌊 Still and quiet — time has stopped',
+        '⚡ Electric — something is about to happen, or just did',
+        '🌀 In motion — we\'re moving, going somewhere, alive in it',
+        '🔥 Celebratory — big, loud, full of life',
+      ]} />
+      <UserBubble dark={dark} styleV={sv} time="12:05">
+        <BText dark={dark}>⚡ Electric — something is about to happen, or just did</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={6} dark={dark} styleV='A' />
+      <SectionLabel dark={dark}>Q6 — The Detail</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:05">
+        <BLine dark={dark} bold>What do you see? What emotion do you feel most?</BLine>
+        <BLine dark={dark}>Can you describe it?</BLine>
+        <div style={{ height:4 }} />
+        <BLine dark={dark}><BText bold dark={dark}>Hint:</BText> A sound, an object, someone's expression...</BLine>
+      </PicoBubble>
+      <UserBubble dark={dark} styleV={sv} time="12:06">
+        <BText dark={dark}>We're standing on a cobblestone street at golden hour. He's looking at me like I'm the whole scene. There's soft music from somewhere nearby.</BText>
+      </UserBubble>
+
+      <Divider dark={dark} />
+      <ProgressHeader step={7} dark={dark} styleV='A' />
+      <SectionLabel dark={dark}>Photo & Generation</SectionLabel>
+      <PicoBubble dark={dark} styleV={sv} time="12:06">
+        <BLine dark={dark} bold>Beautiful. Now add your photo — I'll place you inside your vision.</BLine>
+        <div style={{ height:4 }} />
+        <BLine dark={dark}>Take a selfie or upload a photo.</BLine>
+      </PicoBubble>
+      <PhotoUpload dark={dark} styleV={sv} />
+
+      <PicoBubble dark={dark} styleV={sv} time="12:08">
+        <BLine dark={dark} bold>Here are 4 versions of your vision. Which one resonates most?</BLine>
+      </PicoBubble>
+      <GeneratedImages dark={dark} styleV='A' />
+      <CTAButton label="✓ This is my vision" dark={dark} styleV='A' />
+
+      <div style={{ height:20 }} />
+      <BottomBar dark={dark} placeholder="Ask & answer anything" styleV={sv} />
+    </>
+  );
+}
+
+/* ─── ROOT ────────────────────────────────────────────────────── */
+function App() {
+  return (
+    <DesignCanvas title="ReelYou — Visualization Chat Flow Wireframes">
+      <DCSection id="s1" title="3 Variations — Full End-to-End Flow (Love Relationship example)">
+
+        <DCArtboard id="a1" label="A — Classic Chat (Light)" width={390} height={2600}>
+          <Phone dark={false} label="A — Classic Chat">
+            <FlowA />
+          </Phone>
+        </DCArtboard>
+
+        <DCArtboard id="a2" label="B — Structured Cards (Light)" width={390} height={2600}>
+          <Phone dark={false} label="B — Structured Cards">
+            <FlowB />
+          </Phone>
+        </DCArtboard>
+
+        <DCArtboard id="a3" label="C — Dark Mode Chat" width={390} height={2600}>
+          <Phone dark={true} label="C — Dark Mode">
+            <FlowC />
+          </Phone>
+        </DCArtboard>
+
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+<div id="root"></div>
+</body>
+</html>
